@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://venmo.com/u/YOUR-VENMO"><img src="https://img.shields.io/badge/Venmo-Buy%20me%20a%20coffee-008CFF?logo=venmo&logoColor=white&style=for-the-badge" alt="Donate with Venmo"></a>
+  <a href="https://venmo.com/u/heaton0825"><img src="https://img.shields.io/badge/Venmo-Buy%20me%20a%20coffee-008CFF?logo=venmo&logoColor=white&style=for-the-badge" alt="Donate with Venmo"></a>
 </p>
 
 > 💚 **This app is free and always will be.** I built it for my own Vinted shop. If it saves you time too, a small tip on [Venmo](https://venmo.com/u/heaton0825) is appreciated, but never expected.
