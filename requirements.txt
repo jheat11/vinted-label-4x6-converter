@@ -1,0 +1,6 @@
+pypdf>=4.0
+pypdfium2>=4.20
+Pillow>=9.0
+customtkinter>=5.2
+tkinterdnd2>=0.4
+pywin32>=306; sys_platform == "win32"
