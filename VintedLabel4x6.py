@@ -1,6 +1,6 @@
 """
 Vinted Label 4x6 - turns a full-page shipping label PDF (Letter / A4) into a
-thermal label (4x6, 100x150mm, 3x5, 4x4 or 4x3) and prints it on a label
+thermal label (4x3, 3x5, 4x4, 100x150mm or 4x6) and prints it on a label
 printer (iDPRT SP410, Rollo, MUNBYN, Zebra...). Runs on Windows, macOS and Linux.
 
   VintedLabel4x6                       -> open the app, drop a label PDF on it
@@ -31,12 +31,13 @@ BOX_COLOR = "#e5484d"
 
 MM = 72 / 25.4
 # name -> (width, height in PDF points, CUPS media name). Width = across the roll.
+# Listed smallest to largest - that's the order shown in the dropdown.
 LABEL_SIZES = {
-    "4×6 in":     (4 * 72, 6 * 72, "Custom.4x6in"),
-    "100×150 mm": (100 * MM, 150 * MM, "Custom.100x150mm"),
+    "4×3 in":     (4 * 72, 3 * 72, "Custom.4x3in"),
     "3×5 in":     (3 * 72, 5 * 72, "Custom.3x5in"),
     "4×4 in":     (4 * 72, 4 * 72, "Custom.4x4in"),
-    "4×3 in":     (4 * 72, 3 * 72, "Custom.4x3in"),
+    "100×150 mm": (100 * MM, 150 * MM, "Custom.100x150mm"),
+    "4×6 in":     (4 * 72, 6 * 72, "Custom.4x6in"),
 }
 DEFAULT_SIZE = "4×6 in"
 
@@ -477,67 +478,17 @@ def run_gui(initial=None):
 
         def _section(self, parent, text):
             ctk.CTkLabel(parent, text=text, font=ctk.CTkFont(size=11, weight="bold"),
-                         text_color=("gray45", "gray60"), anchor="w").pack(fill="x", padx=20, pady=(18, 6))
+                         text_color=("gray45", "gray60"), anchor="w").pack(fill="x", padx=8, pady=(16, 6))
 
         def _build_sidebar(self):
             side = ctk.CTkFrame(self, width=290, corner_radius=14)
             side.grid(row=0, column=1, sticky="ns", padx=(8, 16), pady=16)
             side.pack_propagate(False)
 
-            ctk.CTkLabel(side, text=APP_NAME, font=ctk.CTkFont(size=20, weight="bold"),
-                         anchor="w").pack(fill="x", padx=20, pady=(20, 0))
-            ctk.CTkLabel(side, text="Full-page label → thermal label", anchor="w",
-                         text_color=("gray45", "gray60")).pack(fill="x", padx=20)
-
-            ctk.CTkButton(side, text="Open PDF…", height=36, fg_color="transparent", border_width=1,
-                          text_color=("gray10", "gray90"), border_color=("gray70", "gray35"),
-                          hover_color=("gray85", "gray25"), command=self.pick).pack(fill="x", padx=20, pady=(16, 4))
-            self.file_lbl = ctk.CTkLabel(side, text="No file loaded", anchor="w",
-                                         font=ctk.CTkFont(size=12), text_color=("gray45", "gray60"))
-            self.file_lbl.pack(fill="x", padx=20)
-
-            self._section(side, "LABEL AREA")
-            row = ctk.CTkFrame(side, fg_color="transparent")
-            row.pack(fill="x", padx=20)
-            self.prev_b = ctk.CTkButton(row, text="‹", width=32, command=lambda: self.go(-1))
-            self.prev_b.pack(side="left")
-            self.page_lbl = ctk.CTkLabel(row, text="—", width=70)
-            self.page_lbl.pack(side="left", padx=4)
-            self.next_b = ctk.CTkButton(row, text="›", width=32, command=lambda: self.go(1))
-            self.next_b.pack(side="left")
-            self.auto_b = ctk.CTkButton(row, text="Reset", width=70, command=self.reset_box)
-            self.auto_b.pack(side="right")
-            for b in (self.prev_b, self.next_b, self.auto_b):
-                b.configure(fg_color=("gray82", "gray28"), hover_color=("gray75", "gray35"),
-                            text_color=("gray10", "gray90"))
-            ctk.CTkLabel(side, text="Drag on the page to pick a different area", anchor="w",
-                         font=ctk.CTkFont(size=11), text_color=("gray45", "gray60")).pack(fill="x", padx=20, pady=(4, 0))
-
-            self._section(side, "LABEL SIZE")
-            saved_size = load_settings().get("size")
-            self.size_menu = ctk.CTkOptionMenu(side, values=list(LABEL_SIZES), command=self._size_changed,
-                                               fg_color=("gray82", "gray28"), button_color=("gray75", "gray35"),
-                                               button_hover_color=("gray70", "gray40"),
-                                               text_color=("gray10", "gray90"), dynamic_resizing=False)
-            self.size_menu.set(saved_size if saved_size in LABEL_SIZES else DEFAULT_SIZE)
-            self.size_menu.pack(fill="x", padx=20)
-
-            self._section(side, "ROTATION")
-            self.rot = ctk.CTkSegmentedButton(side, values=list(ROT_OPTIONS), command=lambda _: self.rebuild(),
-                                              selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
-            self.rot.set("Auto")
-            self.rot.pack(fill="x", padx=20)
-
-            self._section(side, "RESULT")
-            holder = ctk.CTkFrame(side, width=200, height=216, fg_color="transparent")
-            holder.pack(padx=20)
-            holder.pack_propagate(False)
-            self.thumb = ctk.CTkLabel(holder, text="", width=144, height=216, corner_radius=6,
-                                      fg_color=("gray85", "gray22"))
-            self.thumb.place(relx=0.5, rely=0.5, anchor="center")
-
+            # Print controls are packed FIRST at the bottom so they can never be
+            # pushed off-screen; everything else scrolls if the window is short.
             bottom = ctk.CTkFrame(side, fg_color="transparent")
-            bottom.pack(side="bottom", fill="x", padx=20, pady=20)
+            bottom.pack(side="bottom", fill="x", padx=20, pady=(8, 20))
 
             self.printers = []
             if printing_available():
@@ -579,6 +530,62 @@ def run_gui(initial=None):
             self.status = ctk.CTkLabel(bottom, text="", font=ctk.CTkFont(size=12), wraplength=240,
                                        text_color=("gray45", "gray60"))
             self.status.pack(fill="x", pady=(10, 0))
+
+
+            ctk.CTkLabel(side, text=APP_NAME, font=ctk.CTkFont(size=20, weight="bold"),
+                         anchor="w").pack(fill="x", padx=20, pady=(20, 0))
+            ctk.CTkLabel(side, text="Full-page label → thermal label", anchor="w",
+                         text_color=("gray45", "gray60")).pack(fill="x", padx=20)
+
+            mid = ctk.CTkScrollableFrame(side, fg_color="transparent", corner_radius=0)
+            mid.pack(fill="both", expand=True, padx=12, pady=(4, 0))
+
+            ctk.CTkButton(mid, text="Open PDF…", height=36, fg_color="transparent", border_width=1,
+                          text_color=("gray10", "gray90"), border_color=("gray70", "gray35"),
+                          hover_color=("gray85", "gray25"), command=self.pick).pack(fill="x", padx=8, pady=(16, 4))
+            self.file_lbl = ctk.CTkLabel(mid, text="No file loaded", anchor="w",
+                                         font=ctk.CTkFont(size=12), text_color=("gray45", "gray60"))
+            self.file_lbl.pack(fill="x", padx=8)
+
+            self._section(mid, "LABEL AREA")
+            row = ctk.CTkFrame(mid, fg_color="transparent")
+            row.pack(fill="x", padx=8)
+            self.prev_b = ctk.CTkButton(row, text="‹", width=32, command=lambda: self.go(-1))
+            self.prev_b.pack(side="left")
+            self.page_lbl = ctk.CTkLabel(row, text="—", width=70)
+            self.page_lbl.pack(side="left", padx=4)
+            self.next_b = ctk.CTkButton(row, text="›", width=32, command=lambda: self.go(1))
+            self.next_b.pack(side="left")
+            self.auto_b = ctk.CTkButton(row, text="Reset", width=70, command=self.reset_box)
+            self.auto_b.pack(side="right")
+            for b in (self.prev_b, self.next_b, self.auto_b):
+                b.configure(fg_color=("gray82", "gray28"), hover_color=("gray75", "gray35"),
+                            text_color=("gray10", "gray90"))
+            ctk.CTkLabel(mid, text="Drag on the page to pick a different area", anchor="w",
+                         font=ctk.CTkFont(size=11), text_color=("gray45", "gray60")).pack(fill="x", padx=8, pady=(4, 0))
+
+            self._section(mid, "LABEL SIZE")
+            saved_size = load_settings().get("size")
+            self.size_menu = ctk.CTkOptionMenu(mid, values=list(LABEL_SIZES), command=self._size_changed,
+                                               fg_color=("gray82", "gray28"), button_color=("gray75", "gray35"),
+                                               button_hover_color=("gray70", "gray40"),
+                                               text_color=("gray10", "gray90"), dynamic_resizing=False)
+            self.size_menu.set(saved_size if saved_size in LABEL_SIZES else DEFAULT_SIZE)
+            self.size_menu.pack(fill="x", padx=8)
+
+            self._section(mid, "ROTATION")
+            self.rot = ctk.CTkSegmentedButton(mid, values=list(ROT_OPTIONS), command=lambda _: self.rebuild(),
+                                              selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
+            self.rot.set("Auto")
+            self.rot.pack(fill="x", padx=8)
+
+            self._section(mid, "RESULT")
+            holder = ctk.CTkFrame(mid, width=200, height=216, fg_color="transparent")
+            holder.pack(padx=8)
+            holder.pack_propagate(False)
+            self.thumb = ctk.CTkLabel(holder, text="", width=144, height=216, corner_radius=6,
+                                      fg_color=("gray85", "gray22"))
+            self.thumb.place(relx=0.5, rely=0.5, anchor="center")
 
             self._update_controls()
 
