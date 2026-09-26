@@ -1,12 +1,13 @@
 """
 Vinted Label 4x6 - turns a full-page shipping label PDF (Letter / A4) into a
-4x6 label and prints it on a thermal label printer (iDPRT SP410, etc.).
-Runs on Windows, macOS and Linux.
+thermal label (4x6, 100x150mm, 3x5, 4x4 or 4x3) and prints it on a label
+printer (iDPRT SP410, Rollo, MUNBYN, Zebra...). Runs on Windows, macOS and Linux.
 
   VintedLabel4x6                       -> open the app, drop a label PDF on it
   VintedLabel4x6 label.pdf             -> open the app with that label loaded
   VintedLabel4x6 label.pdf --auto      -> save <name>_4x6.pdf, no window
   VintedLabel4x6 label.pdf --print     -> print to your saved printer, no window
+  add --size=3x5 (or 100x150mm, 4x4, 4x3) to either of those for another size
 """
 
 import io
@@ -28,7 +29,30 @@ UI_FONT = "Helvetica"  # replaced with the theme font once the window exists
 ACCENT, ACCENT_HOVER = "#007782", "#005f68"   # Vinted teal
 BOX_COLOR = "#e5484d"
 
-LABEL_W, LABEL_H = 4 * 72, 6 * 72   # 4x6 inches in PDF points
+MM = 72 / 25.4
+# name -> (width, height in PDF points, CUPS media name). Width = across the roll.
+LABEL_SIZES = {
+    "4×6 in":     (4 * 72, 6 * 72, "Custom.4x6in"),
+    "100×150 mm": (100 * MM, 150 * MM, "Custom.100x150mm"),
+    "3×5 in":     (3 * 72, 5 * 72, "Custom.3x5in"),
+    "4×4 in":     (4 * 72, 4 * 72, "Custom.4x4in"),
+    "4×3 in":     (4 * 72, 3 * 72, "Custom.4x3in"),
+}
+DEFAULT_SIZE = "4×6 in"
+
+
+def size_slug(size):
+    """'4×6 in' -> '4x6', '100×150 mm' -> '100x150mm' (for file names / CLI)."""
+    return size.replace("×", "x").replace(" in", "").replace(" ", "")
+
+
+def size_from_slug(slug):
+    for name in LABEL_SIZES:
+        if size_slug(name) == slug.lower().replace(" ", ""):
+            return name
+    raise SystemExit(f"Unknown size '{slug}'. Use one of: "
+                     + ", ".join(size_slug(n) for n in LABEL_SIZES))
+
 MARGIN = 0.08 * 72                  # small safety margin inside the label
 DETECT_SCALE = 2.0                  # render at 144 dpi for auto-detection
 
@@ -182,9 +206,11 @@ def auto_boxes(pdf_bytes):
     return boxes
 
 
-def build_4x6(pdf_bytes, boxes, rotate="auto"):
-    """Crop each page to its box and fit it onto a 4x6 portrait page.
-    rotate: 'auto' (rotate landscape crops), 0, 90 or 270. Returns PDF bytes."""
+def build_label(pdf_bytes, boxes, rotate="auto", size=DEFAULT_SIZE):
+    """Crop each page to its box and fit it onto a label of the given size.
+    rotate: 'auto' (whichever way fills the label best), 0, 90 or 270.
+    Returns PDF bytes."""
+    LABEL_W, LABEL_H, _ = LABEL_SIZES[size]
     reader = PdfReader(io.BytesIO(pdf_bytes))
     writer = PdfWriter()
     for page, (x0, y0, x1, y1) in zip(reader.pages, boxes):
@@ -193,12 +219,15 @@ def build_4x6(pdf_bytes, boxes, rotate="auto"):
         page.mediabox = RectangleObject([x0, y0, x1, y1])
         page.cropbox = RectangleObject([x0, y0, x1, y1])
 
+        def fit(w, h):
+            return min((LABEL_W - 2 * MARGIN) / w, (LABEL_H - 2 * MARGIN) / h)
+
         rot = rotate
-        if rot == "auto":
-            rot = 90 if bw > bh else 0
+        if rot == "auto":   # turn it if that makes it bigger on the label
+            rot = 90 if fit(bh, bw) > fit(bw, bh) * 1.01 else 0
         rw, rh = (bh, bw) if rot in (90, 270) else (bw, bh)
 
-        s = min((LABEL_W - 2 * MARGIN) / rw, (LABEL_H - 2 * MARGIN) / rh)
+        s = fit(rw, rh)
         t = Transformation().translate(-x0, -y0)
         if rot == 90:
             t = t.rotate(90).translate(bh, 0)
@@ -214,9 +243,9 @@ def build_4x6(pdf_bytes, boxes, rotate="auto"):
     return buf.getvalue()
 
 
-def default_out(path):
+def default_out(path, size=DEFAULT_SIZE):
     p = Path(path)
-    return p.with_name(p.stem + "_4x6.pdf")
+    return p.with_name(f"{p.stem}_{size_slug(size)}.pdf")
 
 
 def open_file(path):
@@ -231,7 +260,7 @@ def open_file(path):
 
 # ============================================================ printing
 # Windows: draws straight to the printer with GDI (pywin32).
-# macOS / Linux: hands the 4x6 PDF to CUPS with `lp`.
+# macOS / Linux: hands the label PDF to CUPS with `lp`.
 
 def printing_available():
     if IS_WIN:
@@ -278,20 +307,20 @@ def pick_printer(names, default):
     return default if default in names else (names[0] if names else None)
 
 
-def print_label(label_pdf, printer, copies=1):
+def print_label(label_pdf, printer, copies=1, size=DEFAULT_SIZE):
     if IS_WIN:
-        _print_windows(label_pdf, printer, copies)
+        _print_windows(label_pdf, printer, copies, size)
     else:
-        _print_cups(label_pdf, printer, copies)
+        _print_cups(label_pdf, printer, copies, size)
 
 
-def _print_cups(label_pdf, printer, copies):
+def _print_cups(label_pdf, printer, copies, size):
     fd, tmp = tempfile.mkstemp(suffix=".pdf")
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(label_pdf)
         r = subprocess.run(["lp", "-d", printer, "-n", str(max(1, copies)),
-                            "-o", "media=Custom.4x6in", "-o", "fit-to-page", tmp],
+                            "-o", f"media={LABEL_SIZES[size][2]}", "-o", "fit-to-page", tmp],
                            capture_output=True, text=True, timeout=30)
         if r.returncode != 0:
             raise RuntimeError(r.stderr.strip() or "lp failed")
@@ -303,7 +332,7 @@ def _print_cups(label_pdf, printer, copies):
 
 
 def render_for_print(label_pdf, dpi):
-    """Render every 4x6 page as crisp black & white at the printer's resolution."""
+    """Render every label page as crisp black & white at the printer's resolution."""
     images = []
     for i in range(page_count(label_pdf)):
         img = render_page(label_pdf, i, dpi / 72, grayscale=True,
@@ -313,8 +342,8 @@ def render_for_print(label_pdf, dpi):
     return images
 
 
-def printer_dc(printer):
-    """Open a device context for the printer, asking the driver for 4x6 portrait."""
+def printer_dc(printer, size):
+    """Open a device context for the printer, asking the driver for the label size."""
     import win32con, win32gui, win32print, win32ui
     devmode = None
     try:
@@ -327,8 +356,9 @@ def printer_dc(printer):
         pass
     if devmode is not None:
         devmode.Orientation = win32con.DMORIENT_PORTRAIT
-        devmode.PaperWidth = 1016    # tenths of a mm -> 4 in
-        devmode.PaperLength = 1524   # 6 in
+        w_pt, h_pt, _ = LABEL_SIZES[size]
+        devmode.PaperWidth = round(w_pt / MM * 10)    # tenths of a mm
+        devmode.PaperLength = round(h_pt / MM * 10)
         devmode.Fields |= (win32con.DM_ORIENTATION | win32con.DM_PAPERWIDTH
                            | win32con.DM_PAPERLENGTH)
         hdc = win32gui.CreateDC("WINSPOOL", printer, devmode)
@@ -338,10 +368,10 @@ def printer_dc(printer):
     return dc
 
 
-def _print_windows(label_pdf, printer, copies=1):
+def _print_windows(label_pdf, printer, copies, size):
     import win32con
     from PIL import ImageWin
-    dc = printer_dc(printer)
+    dc = printer_dc(printer, size)
     try:
         dpi = dc.GetDeviceCaps(win32con.LOGPIXELSX) or 203
         area_w = dc.GetDeviceCaps(win32con.HORZRES)
@@ -456,7 +486,7 @@ def run_gui(initial=None):
 
             ctk.CTkLabel(side, text=APP_NAME, font=ctk.CTkFont(size=20, weight="bold"),
                          anchor="w").pack(fill="x", padx=20, pady=(20, 0))
-            ctk.CTkLabel(side, text="Full-page label → 4×6 thermal", anchor="w",
+            ctk.CTkLabel(side, text="Full-page label → thermal label", anchor="w",
                          text_color=("gray45", "gray60")).pack(fill="x", padx=20)
 
             ctk.CTkButton(side, text="Open PDF…", height=36, fg_color="transparent", border_width=1,
@@ -483,16 +513,28 @@ def run_gui(initial=None):
             ctk.CTkLabel(side, text="Drag on the page to pick a different area", anchor="w",
                          font=ctk.CTkFont(size=11), text_color=("gray45", "gray60")).pack(fill="x", padx=20, pady=(4, 0))
 
+            self._section(side, "LABEL SIZE")
+            saved_size = load_settings().get("size")
+            self.size_menu = ctk.CTkOptionMenu(side, values=list(LABEL_SIZES), command=self._size_changed,
+                                               fg_color=("gray82", "gray28"), button_color=("gray75", "gray35"),
+                                               button_hover_color=("gray70", "gray40"),
+                                               text_color=("gray10", "gray90"), dynamic_resizing=False)
+            self.size_menu.set(saved_size if saved_size in LABEL_SIZES else DEFAULT_SIZE)
+            self.size_menu.pack(fill="x", padx=20)
+
             self._section(side, "ROTATION")
             self.rot = ctk.CTkSegmentedButton(side, values=list(ROT_OPTIONS), command=lambda _: self.rebuild(),
                                               selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
             self.rot.set("Auto")
             self.rot.pack(fill="x", padx=20)
 
-            self._section(side, "4×6 RESULT")
-            self.thumb = ctk.CTkLabel(side, text="", width=144, height=216, corner_radius=6,
+            self._section(side, "RESULT")
+            holder = ctk.CTkFrame(side, width=200, height=216, fg_color="transparent")
+            holder.pack(padx=20)
+            holder.pack_propagate(False)
+            self.thumb = ctk.CTkLabel(holder, text="", width=144, height=216, corner_radius=6,
                                       fg_color=("gray85", "gray22"))
-            self.thumb.pack(padx=20)
+            self.thumb.place(relx=0.5, rely=0.5, anchor="center")
 
             bottom = ctk.CTkFrame(side, fg_color="transparent")
             bottom.pack(side="bottom", fill="x", padx=20, pady=20)
@@ -588,15 +630,22 @@ def run_gui(initial=None):
             self.rebuild()
             self.redraw()
 
+        def _size_changed(self, size):
+            save_settings(size=size)
+            self.rebuild()
+
         def rebuild(self):
-            """Regenerate the 4x6 PDF and its thumbnail."""
+            """Regenerate the label PDF and its thumbnail."""
             self._update_controls()
             if self.pdf is None:
                 return
-            self.label_pdf = build_4x6(self.pdf, self.boxes, ROT_OPTIONS[self.rot.get()])
+            size = self.size_menu.get()
+            self.label_pdf = build_label(self.pdf, self.boxes, ROT_OPTIONS[self.rot.get()], size)
             img = render_page(self.label_pdf, min(self.idx, page_count(self.label_pdf) - 1), 1.0)
-            self.thumb_img = ctk.CTkImage(light_image=img, dark_image=img, size=(144, 216))
-            self.thumb.configure(image=self.thumb_img)
+            k = min(200 / img.width, 216 / img.height)     # fit the thumbnail box
+            tw, th = int(img.width * k), int(img.height * k)
+            self.thumb_img = ctk.CTkImage(light_image=img, dark_image=img, size=(tw, th))
+            self.thumb.configure(image=self.thumb_img, width=tw, height=th)
 
         # ---------- preview canvas
         def _schedule_redraw(self):
@@ -688,7 +737,7 @@ def run_gui(initial=None):
             if self.label_pdf is None:
                 return
             out = filedialog.asksaveasfilename(defaultextension=".pdf",
-                                               initialfile=default_out(self.path).name,
+                                               initialfile=default_out(self.path, self.size_menu.get()).name,
                                                initialdir=str(Path(self.path).parent),
                                                filetypes=[("PDF files", "*.pdf")])
             if not out:
@@ -705,6 +754,7 @@ def run_gui(initial=None):
                 return
             printer = self.printer_menu.get()
             copies = int(self.copies.get())
+            size = self.size_menu.get()
             save_settings(printer=printer)
             self.print_b.configure(state="disabled", text="Printing…")
             self.set_status(f"Sending to {printer}…")
@@ -713,7 +763,7 @@ def run_gui(initial=None):
 
             def work():
                 try:
-                    print_label(data, printer, copies)
+                    print_label(data, printer, copies, size)
                     self.print_result = ("ok", printer)
                 except Exception as ex:
                     self.print_result = ("err", str(ex))
@@ -741,15 +791,20 @@ def run_gui(initial=None):
 
 def main():
     files = [a for a in sys.argv[1:] if not a.startswith("--")]
+    size = load_settings().get("size", DEFAULT_SIZE)
+    size = size if size in LABEL_SIZES else DEFAULT_SIZE
+    for a in sys.argv[1:]:
+        if a.startswith("--size="):
+            size = size_from_slug(a.split("=", 1)[1])
     if files and ("--auto" in sys.argv or "--print" in sys.argv):
         for f in files:
             pdf = normalize_pdf(f)
-            label = build_4x6(pdf, auto_boxes(pdf))
+            label = build_label(pdf, auto_boxes(pdf), size=size)
             if "--print" in sys.argv:
                 names, default = list_printers()
-                print_label(label, pick_printer(names, default))
+                print_label(label, pick_printer(names, default), size=size)
             else:
-                out = default_out(f)
+                out = default_out(f, size)
                 out.write_bytes(label)
                 open_file(out)
     else:

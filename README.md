@@ -5,7 +5,7 @@
 <h1 align="center">Vinted Label 4x6</h1>
 
 <p align="center">
-  Turn Vinted's full-page shipping labels into <b>4×6 thermal labels</b> and print them in one click.<br>
+  Turn Vinted's full-page shipping labels into <b>thermal labels</b> (4×6 and other common sizes) and print them in one click.<br>
   Works on Windows, macOS and Linux. Everything happens on your computer — nothing is uploaded.
 </p>
 
@@ -13,16 +13,17 @@
   <a href="https://venmo.com/u/heaton0825"><img src="https://img.shields.io/badge/Venmo-Buy%20me%20a%20coffee-008CFF?logo=venmo&logoColor=white&style=for-the-badge" alt="Donate with Venmo"></a>
 </p>
 
-> 💚 **This app is free and always will be.** I built it for my own Vinted shop. If it saves you time too, a small tip on [Venmo](https://venmo.com/u/heaton0825) is appreciated, but never expected.
+> 💚 **This app is free and always will be.** I built it for my own Vinted shop. If it saves you time too, a small tip on [Venmo](https://venmo.com/u/heaton0825) (**@heaton0825**) is appreciated, but never expected.
 
 <!-- Add a screenshot: save it as docs/screenshot.png and uncomment the next line -->
 <!-- <p align="center"><img src="docs/screenshot.png" width="720" alt="Screenshot"></p> -->
 
 ---
 
-Vinted only gives you shipping labels as a full Letter/A4 page. If you use a 4×6 thermal label printer (iDPRT SP410, Rollo, MUNBYN, Zebra and similar), that page prints tiny or gets cut off. This app finds the label on the page, crops away the instructions, turns it upright if needed and fits it perfectly on a 4×6 label.
+Vinted only gives you shipping labels as a full Letter/A4 page. If you use a thermal label printer (iDPRT SP410, Rollo, MUNBYN, Zebra and similar), that page prints tiny or gets cut off. This app finds the label on the page, crops away the instructions, turns it the right way and fits it on your label.
 
 - **Auto-detects the label** on the page. If it guesses wrong, drag a box around the right area.
+- **Standard label sizes:** 4×6 in, 100×150 mm, 3×5 in, 4×4 in and 4×3 in.
 - **Prints directly** to your label printer, with 1–3 copies.
 - **Sharp barcodes**, because it keeps the original vector PDF instead of a blurry screenshot.
 - **Save as PDF** if you'd rather print from somewhere else.
@@ -55,13 +56,13 @@ On an Intel Mac, use [Run from source](#run-from-source) instead.
 1. Download your label PDF from Vinted.
 2. Drop it onto the app window, or click **Open PDF…**.
 3. Check the red box. Everything outside it is dimmed and won't be printed. If the box is wrong, drag a new one on the page.
-4. Check the **4×6 result** preview, pick your printer, and click **Print label**.
+4. Pick your **label size**, check the **result** preview, choose your printer and click **Print label**.
 
-Keyboard shortcuts: **Ctrl/⌘+O** to open, **Ctrl/⌘+P** to print, **Ctrl/⌘+S** to save as PDF. The app remembers which printer you picked.
+Keyboard shortcuts: **Ctrl/⌘+O** to open, **Ctrl/⌘+P** to print, **Ctrl/⌘+S** to save as PDF. The app remembers your printer and label size.
 
 ## Printer setup
 
-You only need to do this once: set your label printer's default paper size to **4×6 in (100×150 mm)**.
+You only need to do this once: set your label printer's default paper size to match your labels, for example **4×6 in (100×150 mm)**.
 
 - **Windows:** Settings → Bluetooth & devices → Printers & scanners → *your printer* → Printing preferences.
 - **macOS:** add the printer in System Settings → Printers & Scanners, using the driver from the manufacturer if it has one.
@@ -85,6 +86,7 @@ It also works from the command line:
 ```bash
 python VintedLabel4x6.py label.pdf --auto    # saves label_4x6.pdf next to it
 python VintedLabel4x6.py label.pdf --print   # prints to your saved printer
+python VintedLabel4x6.py label.pdf --auto --size=3x5   # other sizes: 100x150mm, 4x4, 4x3
 ```
 
 ## Build it yourself
@@ -101,6 +103,7 @@ The finished app ends up in `dist/`. Each operating system builds its own versio
 - **"No printers found".** Make sure the printer is installed in your OS and turned on, then restart the app.
 - **Drag-and-drop doesn't work.** Use **Open PDF…** instead, which always works.
 - **The label is upside down or sideways.** Use the **Rotation** buttons.
+- **On 4×4 and 4×3 labels the label looks small.** Vinted's labels are tall, so they have to shrink to fit a short label. Check that the barcode still scans, or use a taller label size.
 
 ## Disclaimer
 
@@ -108,7 +111,7 @@ This is an independent project. It is not affiliated with, endorsed by or connec
 
 ## Support
 
-This app is free. If it helped your shop, you can [leave a tip on Venmo](https://venmo.com/u/heaton0825). Bug reports and ideas are also welcome in [Issues](../../issues).
+This app is free. If it helped your shop, you can [leave a tip on Venmo](https://venmo.com/u/heaton0825) (**@heaton0825**). Bug reports and ideas are also welcome in [Issues](../../issues).
 
 ## License
 
