@@ -9,6 +9,12 @@
   Works on Windows, macOS and Linux. Everything happens on your computer — nothing is uploaded.
 </p>
 
+<p align="center">
+  <a href="https://venmo.com/u/YOUR-VENMO"><img src="https://img.shields.io/badge/Venmo-Buy%20me%20a%20coffee-008CFF?logo=venmo&logoColor=white&style=for-the-badge" alt="Donate with Venmo"></a>
+</p>
+
+> 💚 **This app is free and always will be.** I built it for my own Vinted shop. If it saves you time too, a small tip on [Venmo](https://venmo.com/u/heaton0825) is appreciated, but never expected.
+
 <!-- Add a screenshot: save it as docs/screenshot.png and uncomment the next line -->
 <!-- <p align="center"><img src="docs/screenshot.png" width="720" alt="Screenshot"></p> -->
 
@@ -36,7 +42,7 @@ On an Intel Mac, use [Run from source](#run-from-source) instead.
 
 ### First launch
 
-The app isn't code-signed (that costs money), so your computer will warn you the first time you open it.
+***The app isn't code-signed (that costs money), so your computer will warn you the first time you open it.***
 
 **Windows:** unzip the download and double-click `VintedLabel4x6.exe`. If you see "Windows protected your PC", click **More info → Run anyway**.
 
@@ -89,17 +95,6 @@ python build.py
 
 The finished app ends up in `dist/`. Each operating system builds its own version, so you have to build on the OS you're targeting.
 
-### Publishing a release (maintainers)
-
-GitHub Actions builds all three versions automatically. To publish:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-After about 10 minutes the downloads appear on the Releases page. You can also test a build without releasing from **Actions → Build & Release → Run workflow**.
-
 ## Troubleshooting
 
 - **The red box grabbed the wrong area.** Drag a new box on the page. **Reset** goes back to the automatic guess.
@@ -110,6 +105,10 @@ After about 10 minutes the downloads appear on the Releases page. You can also t
 ## Disclaimer
 
 This is an independent project. It is not affiliated with, endorsed by or connected to Vinted. It works with any PDF that has a shipping label somewhere on a larger page.
+
+## Support
+
+This app is free. If it helped your shop, you can [leave a tip on Venmo](https://venmo.com/u/heaton0825). Bug reports and ideas are also welcome in [Issues](../../issues).
 
 ## License
 
